@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-textMain font-sans antialiased selection:bg-primary/30 selection:text-primary overflow-x-hidden;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+  
+  .glass-card {
+    @apply bg-card/50 backdrop-blur-lg border border-white/5 hover:border-primary/30 transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(20,184,166,0.3)] hover:shadow-[0_0_25px_rgba(20,184,166,0.5)] transition-all duration-300;
+  }
+
+  .btn-secondary {
+    @apply bg-surface hover:bg-card border border-white/10 text-textMain font-medium py-2 px-4 rounded-lg transition-all duration-300;
+  }
+  
+  .input-premium {
+    @apply w-full bg-background/50 border border-white/10 rounded-lg px-4 py-3 text-textMain placeholder-textMuted focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all duration-300;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-card rounded-full border border-white/5;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-white/20;
+}

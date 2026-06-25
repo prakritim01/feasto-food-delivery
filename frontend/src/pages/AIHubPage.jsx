@@ -27,9 +27,8 @@ export default function AIHubPage() {
     setAiResults(null);
     
     try {
-      // NOTE: If you deploy your backend to Render, replace this URL with your live Render link!
-      // Example: 'https://feasto-ai-backend.onrender.com/api/v1/intelligence/recommend'
-      const response = await fetch('http://127.0.0.1:8000/api/v1/intelligence/recommend', {
+      // Pointing directly to your live Render backend
+      const response = await fetch('https://feasto-food-delivery.onrender.com/api/v1/intelligence/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goal: objective, budget: parseInt(budget) })

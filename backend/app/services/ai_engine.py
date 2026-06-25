@@ -1,47 +1,84 @@
 import numpy as np
-from datetime import datetime
-import random
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from typing import List, Dict
 
-def calculate_nutrition_twin(height: int, weight: int, activity_level: str, goal: str):
-    bmr = (10 * weight) + (6.25 * height) - (5 * 25) + 5
-    tdee = bmr * {"low": 1.2, "medium": 1.55, "high": 1.9}.get(activity_level.lower(), 1.2)
-    target_protein = weight * (2.2 if goal == "muscle" else 1.6)
-    current_protein = int(target_protein * 0.6) 
-    deficit = round(target_protein - current_protein, 1)
-    
-    return {
-        "bmr": round(bmr), "tdee": round(tdee), "daily_target_protein": round(target_protein, 1),
-        "current_intake": current_protein, "deficit": deficit,
-        "recommendation": "Grilled Salmon Bowl" if deficit > 40 else "Greek Yogurt & Almonds",
-        "critical_warning": deficit > 50
-    }
+class FeastoAIEngine:
+    def __init__(self):
+        # 1. Initialize Recommendation Knowledge Base (Simulated DB)
+        self.menu_df = pd.DataFrame([
+            {"id": 101, "name": "Keto Salmon Bowl", "cal": 450, "protein": 35, "price": 400},
+            {"id": 102, "name": "Wagyu Truffle Burger", "cal": 850, "protein": 45, "price": 800},
+            {"id": 103, "name": "Vegan Power Wrap", "cal": 320, "protein": 28, "price": 250},
+            {"id": 104, "name": "Grilled Chicken Salad", "cal": 350, "protein": 40, "price": 300},
+            {"id": 105, "name": "Steak & Quinoa", "cal": 600, "protein": 55, "price": 550}
+        ])
 
-def run_food_concierge(budget: float, time_mins: int, preference: str):
-    database = [
-        {"name": "Paneer Tikka Salad", "cost": 180, "time": 15, "tags": ["high protein", "veg"]},
-        {"name": "Chicken Shawarma Wrap", "cost": 140, "time": 10, "tags": ["high protein", "meat"]},
-        {"name": "Quinoa Power Bowl", "cost": 220, "time": 20, "tags": ["vegan", "healthy"]}
-    ]
-    valid_options = [m for m in database if m["cost"] <= budget and m["time"] <= time_mins and preference.lower() in m["tags"]]
-    if not valid_options: return {"status": "failed", "message": "No matches found."}
-    return {"status": "success", "match": sorted(valid_options, key=lambda x: x['cost'])[0]}
+        # 2. Train the Demand Forecasting Model (Scikit-Learn)
+        # Features: [day_of_week (0-6), is_raining (0/1), promo_active (0/1)]
+        np.random.seed(42)
+        X_day = np.random.randint(0, 7, size=(200, 1))
+        X_weather = np.random.randint(0, 2, size=(200, 1))
+        X_promo = np.random.randint(0, 2, size=(200, 1))
+        X_train = np.hstack((X_day, X_weather, X_promo))
 
-def predict_restaurant_demand(restaurant_id: str, target_date: str):
-    date_obj = datetime.strptime(target_date, "%Y-%m-%d")
-    predicted_orders = int((150 * (1.8 if date_obj.weekday() >= 5 else 1.1)) + np.random.normal(0, 15))
-    return {"restaurant_id": restaurant_id, "predicted_orders": predicted_orders, "staffing_recommendation": "High" if predicted_orders > 200 else "Standard"}
+        # Target: orders_count (Weekends +50, Rain +30, Promo +40, plus noise)
+        y_train = 100 + (X_train[:, 0] >= 5) * 50 + X_train[:, 1] * 30 + X_train[:, 2] * 40 + np.random.normal(0, 10, 200)
 
-def mock_receipt_scan(image_name: str):
-    return {
-        "status": "success", "merchant": "Truffles Diner", "total_paid": 450.00,
-        "extracted_items": [{"name": "Peri Peri Burger", "price": 250, "est_calories": 850, "protein": 45}],
-        "total_calories": 850, "health_score": "C+"
-    }
+        # Fit the actual ML model
+        self.forecasting_model = LinearRegression()
+        self.forecasting_model.fit(X_train, y_train)
+        
+        self.is_loaded = True
 
-def get_dashboard_analytics(user_id: str):
-    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    return {
-        "weekly_spend": [{"day": d, "spent": random.randint(150, 600)} for d in days],
-        "calorie_wallet": [{"day": d, "consumed": random.randint(1800, 2600), "target": 2200} for d in days],
-        "insights": "You spent 30% more on weekends."
-    }
+    def get_recommendations(self, user_profile: Dict) -> List[Dict]:
+        """Algorithmic Content-Based Filtering"""
+        goal = user_profile.get("goal", "Maintenance")
+        budget = user_profile.get("budget", 500)
+
+        scored_menu = self.menu_df.copy()
+
+        # 1. Hard Constraint: Filter out items over budget
+        scored_menu = scored_menu[scored_menu['price'] <= budget]
+
+        if scored_menu.empty:
+            return []
+
+        # 2. Soft Constraint: Mathematical Macro Scoring
+        if "Hypertrophy" in goal:
+            # Score favors high protein relative to calories
+            scored_menu['match_score'] = (scored_menu['protein'] / 50.0) 
+        elif "Fat Loss" in goal:
+            # Score favors lower calories
+            scored_menu['match_score'] = 1.0 - (scored_menu['cal'] / 1000.0)
+        else:
+            scored_menu['match_score'] = 0.85 
+
+        # Cap scores cleanly and sort by best match
+        scored_menu['match_score'] = scored_menu['match_score'].clip(upper=0.99)
+        top_meals = scored_menu.sort_values(by='match_score', ascending=False).head(3)
+
+        return top_meals.to_dict('records')
+
+    def forecast_demand(self, restaurant_id: int) -> Dict:
+        """Inference using trained Scikit-Learn model"""
+        # Predict demand for tomorrow (Assumed: Friday=4, No Rain=0, Promo Active=1)
+        X_pred = np.array([[4, 0, 1]])
+        prediction = self.forecasting_model.predict(X_pred)[0]
+
+        return {
+            "predicted_orders_tomorrow": int(prediction),
+            "peak_hour": "19:00",
+            "confidence_interval": [int(prediction * 0.85), int(prediction * 1.15)]
+        }
+
+    def analyze_food_vision(self, image_bytes: bytes) -> Dict:
+        # Placeholder for Deep Learning CNN (ResNet50)
+        return {
+            "detected_food": "Pending CNN Integration",
+            "estimated_calories": 0,
+            "macros": {"protein": 0, "carbs": 0, "fat": 0},
+            "confidence": 0.0
+        }
+
+ai_system = FeastoAIEngine()

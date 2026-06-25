@@ -1,27 +1,34 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from app.services.ai_engine import *
+from .database import engine, Base
+from .services.ai_engine import ai_system
+from .routers import websocket
 
-app = FastAPI(title="Feasto AI Platform", version="2.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# Creates the local SQLite database file instantly
+Base.metadata.create_all(bind=engine)
 
-class TwinReq(BaseModel): height: int; weight: int; activity_level: str; goal: str
-class ConciergeReq(BaseModel): budget: float; time_mins: int; preference: str
-class DemandReq(BaseModel): restaurant_id: str; target_date: str
-class ReceiptReq(BaseModel): image_name: str
+app = FastAPI(title="Feasto AI Intelligence Platform v2.0")
 
-@app.post("/api/v1/nutrition-twin")
-def api_twin(req: TwinReq): return calculate_nutrition_twin(req.height, req.weight, req.activity_level, req.goal)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.post("/api/v1/concierge")
-def api_concierge(req: ConciergeReq): return run_food_concierge(req.budget, req.time_mins, req.preference)
+app.include_router(websocket.router, tags=["Real-Time Tracking"])
 
-@app.post("/api/v1/demand-predictor")
-def api_demand(req: DemandReq): return predict_restaurant_demand(req.restaurant_id, req.target_date)
+@app.get("/")
+def read_root():
+    return {"status": "Operational", "engine": "Feasto v2.0"}
 
-@app.post("/api/v1/receipt-scanner")
-def api_receipt(req: ReceiptReq): return mock_receipt_scan(req.image_name)
+@app.post("/api/v1/intelligence/recommend")
+def get_ai_recommendations(profile: dict):
+    results = ai_system.get_recommendations(profile)
+    return {"status": "success", "data": results}
 
-@app.get("/api/v1/analytics/{user_id}")
-def api_analytics(user_id: str): return get_dashboard_analytics(user_id)
+@app.get("/api/v1/restaurants/{rest_id}/forecast")
+def get_demand_forecast(rest_id: int):
+    forecast = ai_system.forecast_demand(rest_id)
+    return {"status": "success", "data": forecast}
